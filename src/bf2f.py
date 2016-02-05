@@ -18,6 +18,7 @@ from math import pi
 
 # --- CONSTANTS --- #
 # ADAM settings... (http://arxiv.org/pdf/1412.6980.pdf)
+#GIDEON: oh, that's what ADAM means.
 EPSILON=1e-8
 LAMBDA=(1-1e-8)
 # code for unobserved relationship
@@ -64,14 +65,23 @@ def generate_traindata(droot, W, R, N=None):
     fo.close()
     return True
 
+#GIDEON: no need to say the same thing twice. `class options_dict`
+#says exactly what it is. If the reader doesn't know this feature of
+#python, then they are in a world of pain anyway.
 # --- options object --- #
 class options_dict(dict):
+#GIDEON: generally CamelCase with capitalization is used. Not a big
+#deal for this project, but something to know for the
+#future. https://google.github.io/styleguide/pyguide.html#Classes
     """
     Class for object.
     """
     def __init__(self):
         """ initialise all settings to defaults """
         # default values
+        #GIDEOIN: I've never seen object initialization like this. Generally it
+        #is `self.online`. Doesn't mean it's wrong, and I am no python
+        #master.
         self['online'] = True
         self['exact'] = False
         self['persistent'] = True
@@ -86,16 +96,22 @@ class options_dict(dict):
         self['fix_relas'] = False
         self['trans_rela'] = False
         self['kappa'] = [0, 0, 0]
-        self['seed'] = 1337
+        self['seed'] = 1337 #GIDEON: you know it!
+
+        #GIDEON: what do these comments mean? Mark them clearly with "TODO:" or something like it.
         # need to input the rest of the defaults
         # (every possible option should be initialised here somehow)
     def pretty_print(self):
         """ print out """
+        #GIDEON: yeah...duh. Nothing personal but your method name is
+        #understood, no need for doc string.
         for (name, value) in self.iteritems():
             print value, '\t:', name
 
     def load(self, path, verbose=False):
         # BRITTLE
+        #GIDEON: ok. Now, I'd like a doc string.
+        #GIDEON: Is this method ever used?
         print 'Reading options from',  path
         options_raw = open(path, 'r').readlines()
         options = dict()
@@ -106,11 +122,13 @@ class options_dict(dict):
             option_name = line.split(' ')[0]
             option_value = ' '.join(line.split(' ')[1:])
             # this is gross
+            #GIDEON: fake it till you make it. Or make as TODO.
             if '(' in option_value:
+                #GIDEON: regexp is write only. This could use explaination.
                 value = tuple(map(float, re.sub('[\(\)]', '', option_value).split(',')))
             elif '[' in option_value:
                 value = np.array(map(float, re.sub('[\[\]]', '', option_value).split(',')))
-            elif option_value == 'False\n':
+            elif option_value == 'False\n': # GIDEON: trim the string. Not efficient, but may save you pain.
                 value = False
             elif option_value == 'True\n':
                 value = True
@@ -122,6 +140,8 @@ class options_dict(dict):
                     value = option_value.strip()
             self[option_name] = value
         # make np arrays
+        #GIDEON: make a meaningful comment here instead. I can clearly
+        #see that you are creating some np arrays.
         self['mu'] = np.array(self['mu'])
         self['nu'] = np.array(self['nu'])
         self['alpha'] = np.array(self['alpha'])
@@ -141,10 +161,12 @@ class options_dict(dict):
             fo.write(option_name+' '+str(value)+'\n')
         fo.close()
         if verbose:
+            # GIDEON: python 2.7 is on the way out. Regardless, it is also not specified anywhere in the project.
             print 'Options saved to', path
 
     def check(self, verbose=False):
         """ sanity check """
+        #GIDEON: aka "validation."
         # hard constraints
         if not 'training_data_path' in self:
             sys.exit('ERROR: missing training_data_path')
@@ -238,6 +260,7 @@ class params(object):
     """
     def __init__(self, initial_parameters, options=None, vocab=None):
         if options is None:
+            #GIDEON: I don't understand the difference between params and options.
             options = options_dict()
         self.etype = options['etype']
         if type(initial_parameters) == str:
@@ -343,7 +366,7 @@ class params(object):
             # regularise (REGOPT 2)
             # old...
             #self.G_vel[1:, :-1, :-1] -= kappa*self.G[1:, :-1, :-1]
-        if ADAM:
+        if ADAM: #GIDEON: ADAM??
             nuC, nuG, nuV = nu
             # accels (elementwise squaring)
             gradsqC = gradC*gradC
@@ -411,6 +434,7 @@ class params(object):
             dE_G = -np.einsum('...i,...j', V_sub, C_sub)
             dE_V = -np.einsum('...ij,...j', G_sub, C_sub)
         elif self.etype == 'euclidean':
+            #GIDEON: "TODO" hooray!
             # TODO: make efficient, probably
             # NOTE: applying G to V, not C
             GV_C = np.einsum('...ij,...j', G_sub, V_sub) - C_sub
@@ -441,7 +465,7 @@ class params(object):
             print prefactor.shape
             dE_G = prefactor*(GV_len*np.einsum('...i,...j', C_sub, V_sub) - (GVC/GV_len)*(np.einsum('...i,...j', GV, V_sub)))
             dE_V = prefactor*(GV_len*np.einsum('...ij,...i', G_sub, C_sub) - (GVC/GV_len)*(np.einsum('...i,...ij', GV, G_sub)))
-        elif self.etype == 'cosine':
+        elif self.etype == 'cosine': #GIDEON sometimes self['etype'], sometimes self.etype? By the way, what is `etype`?
             # TODO: make efficient, I assume. Everything else has that TODO.
             GC = np.einsum('...ij,...j', G_sub, C_sub)
             VGC = np.einsum('...i,...i', V_sub, GC)
@@ -452,10 +476,11 @@ class params(object):
             term1_norm = (V_lens*GC_lens)
             term2_norm = (V_lens*pow(GC_lens, 3))
             # dE_C
+            #GIDEON: what does this comment mean?
             dE_C = (-VG/term1_norm.reshape(-1, 1) + 
                    VGC.reshape(-1, 1)*GCG/term2_norm.reshape(-1, 1))
             # dE_G
-            VC = np.einsum('...i,...j', V_sub, C_sub)
+            VC = np.einsum('...i,...j', V_sub, C_sub) #GIDEON Vapnik-Chervonenkis? jk.
             GCC = np.einsum('...i,...j', GC, C_sub)
             dE_G = (-VC/term1_norm.reshape(-1, 1, 1) +
                    VGC.reshape(-1, 1, 1)*GCC/term2_norm.reshape(-1, 1, 1))
@@ -479,6 +504,7 @@ class params(object):
             # dE_V
             dE_V = GC/V_len - (VGC.reshape(-1, 1))*V_sub/pow(V_len, 3)
         else:
+            #GIDEON: nice.
             sys.exit('ERROR: Not implemented (gradE)')
         return dE_C, dE_G, dE_V
 
@@ -496,13 +522,15 @@ class params(object):
         Note that batch is assumed to have shape[1] == 3, but its 2nd column
         is empty/nonsense.
         """
+        #GIDEON: beautiful. (except for "empty/nonsense")
         W = self.W
-        R = self.R
+        R = self.R # GIDEON: why not self.relationship? you use a text editor with autocomplete.
         d = self.d
         dC_batch = np.zeros(shape=(W, d+1))
         dG_batch = np.zeros(shape=(R, d+1, d+1))
         dV_batch = np.zeros(shape=(W, d+1))
         # create virtual batch (repeat each entry R times)
+        #GIDEON: what's a virtual batch?
         b = batch.shape[0]
         virtual_batch = batch.repeat(R, axis=0)
         virtual_batch[:, 1] = range(R)*b
@@ -560,6 +588,8 @@ class params(object):
             if self.etype == 'dot':
                 VG = np.dot(self.V[t], self.G[r])
                 energy = -np.dot(self.C, VG)
+                #GIDEON: hard for me to parse how much this would
+                #benefit from refactoring, in terms of readability.
             elif self.etype == 'euclidean':
                 GV = np.dot(self.G[r, :, :], self.V[t, :])
                 energy = -np.linalg.norm(GV - self.C, axis=1)
@@ -584,6 +614,7 @@ class params(object):
                 V_len = np.linalg.norm(self.V[t, :])
                 denominator = C_lens*G_len*V_len
                 energy = numerator/denominator
+                # GIDEON: newline.
             else: sys.exit('ERROR: Not implemented (E_axis)')
         elif switch == 'R':
             # return over all R
@@ -654,6 +685,7 @@ class params(object):
         """
         The energy of a SINGLE triple.
         """
+        #GIDEON: oh, that's what `E` stands for...
         s, r, t = triple
         if self.etype == 'dot':
             energy = -np.dot(self.V[t], np.dot(self.G[r], self.C[s]))
@@ -687,6 +719,9 @@ class params(object):
         locations is an array of triples.
         Outputs a list (same length as 'locations') of energy of each triple.
         """
+        #GIDEON: baaa, what? To a newcomer like me, commented out code
+        #like this smells terrible.
+
         #C_sub = self.C[locations[:, 0]]
         #G_sub = self.G[locations[:, 1]]
         #V_sub = self.V[locations[:, 2]]
